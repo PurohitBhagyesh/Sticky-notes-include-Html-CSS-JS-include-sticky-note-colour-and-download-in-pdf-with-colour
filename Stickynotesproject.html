@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sticky Notes</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:'Times New Roman',Times,serif;
+  background:linear-gradient(135deg,#87ceeb 0%,#dfefff 45%,#f7e6c4 100%);
+  color:#2f3b4a;
+  min-height:100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+}
+.sticky-section{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  width:100%;
+  max-width:350px;
+  z-index:10;
+}
+.sticky-note-box{
+  padding:16px;
+  border-radius:16px;
+  background:rgba(255,255,255,.24);
+  backdrop-filter:blur(12px);
+  box-shadow:0 10px 24px rgba(0,0,0,.14);
+}
+.sticky-note-box p{
+  margin:0 0 12px 0;
+  font-weight:700;
+  color:#fff;
+  text-align:center;
+  font-size:18px;
+  text-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+.sticky-note-box textarea{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  resize:vertical;
+  font-family:'Times New Roman',Times,serif;
+  font-weight:700;
+  color:#000;
+  margin-bottom:12px;
+  background:#fff59d;
+  min-height:80px;
+  font-size:16px;
+  line-height:1.4;
+}
+.sticky-note-box textarea[data-color="pink"]{background:#f8c8dc}
+.sticky-note-box textarea[data-color="blue"]{background:#cfe8ff}
+.sticky-note-box textarea[data-color="green"]{background:#d8f5d0}
+.sticky-note-box .color-picker-row{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:12px;
+  justify-content: center;
+}
+.sticky-note-box .color-pill{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:2px solid #fff;
+  cursor:pointer;
+  transition:transform .2s ease;
+  padding:0;
+}
+.sticky-note-box .color-pill:hover{transform:scale(1.08)}
+.sticky-note-box .color-pill.active{outline:2px solid #333}
+.sticky-note-box .color-pill.yellow{background:#fff59d}
+.sticky-note-box .color-pill.pink{background:#f8c8dc}
+.sticky-note-box .color-pill.blue{background:#cfe8ff}
+.sticky-note-box .color-pill.green{background:#d8f5d0}
+.sticky-note-box .add-note-btn{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(135deg,#ffffff,#f4f6ff);
+  color:#2f3b4a;
+  font-weight:700;
+  cursor:pointer;
+  margin-bottom:8px;
+  font-size:15px;
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.sticky-note-box .add-note-btn:hover {
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(0,0,0,.12)
+}
+.sticky-note-box .add-note-btn.secondary{
+  background:linear-gradient(135deg,#2f4f4f,#456a6a);
+  color:#fff;
+}
+.sticky-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.sticky-item{
+  width:100%;
+  padding:12px 34px 12px 12px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.12);
+  font-size:16px;
+  white-space:pre-wrap;
+  cursor:text;
+  transition:transform .35s ease, opacity .35s ease;
+  position:relative;
+  font-family:'Times New Roman',Times,serif;
+  color:#000;
+  font-weight:700;
+  border:1px solid rgba(0,0,0,.06);
+  line-height:1.4;
+  min-height:72px;
+  height:auto;
+  overflow-wrap:anywhere;
+}
+.sticky-item[data-color="yellow"]{background:#fff59d}
+.sticky-item[data-color="pink"]{background:#f8c8dc}
+.sticky-item[data-color="blue"]{background:#cfe8ff}
+.sticky-item[data-color="green"]{background:#d8f5d0}
+.sticky-note-text{
+  outline:none;
+  min-height:48px;
+  height:auto;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap;
+}
+.sticky-menu-button{
+  position:absolute;
+  top:8px;
+  right:8px;
+  border:none;
+  background:rgba(0,0,0,.12);
+  color:#333;
+  border-radius:50%;
+  width:26px;
+  height:26px;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  font-size:16px;
+  line-height:1;
+  padding:0;
+}
+.sticky-menu-button:hover{background:rgba(0,0,0,.2)}
+.sticky-note-menu{
+  position:absolute;
+  top:38px;
+  right:8px;
+  display:none;
+  flex-direction:column;
+  gap:4px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:10px;
+  box-shadow:0 8px 18px rgba(0,0,0,.12);
+  padding:6px;
+  min-width:110px;
+  z-index:5;
+}
+.sticky-note-menu.show{display:flex}
+.sticky-note-menu button{
+  margin:0;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+  background:#f6f6f6;
+  color:#333;
+  font-size:13px;
+  text-align:left;
+  cursor:pointer;
+}
+.sticky-note-menu button:hover{background:#ececec}
+.sticky-item.removing{transform:translateX(-220px);opacity:0}
+
+@media (max-width:480px){
+  .sticky-section{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="sticky-section">
+  <div class="sticky-note-box">
+    <p>Notes</p>
+    <textarea id="noteInput" rows="3" placeholder="Write a note..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); saveNoteFromInput();}"></textarea>
+    <div class="color-picker-row">
+      <button class="color-pill yellow active" onclick="setNoteColor('yellow')" type="button"></button>
+      <button class="color-pill pink" onclick="setNoteColor('pink')" type="button"></button>
+      <button class="color-pill blue" onclick="setNoteColor('blue')" type="button"></button>
+      <button class="color-pill green" onclick="setNoteColor('green')" type="button"></button>
+    </div>
+    <button class="add-note-btn" onclick="saveNoteFromInput()">Add Note</button>
+    <button class="add-note-btn secondary" onclick="saveNotesToPdf()">Download PDF</button>
+  </div>
+  <div id="stickyList" class="sticky-list"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function escapeHtml(text){
+  return text.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+let selectedNoteColor='yellow';
+
+function setNoteColor(color){
+  selectedNoteColor=color;
+  document.querySelectorAll('.color-pill').forEach(btn=>btn.classList.toggle('active',btn.classList.contains(color)));
+  const input=document.getElementById('noteInput');
+  if(input){
+    input.dataset.color=color;
+    const colorMap={yellow:'#fff59d',pink:'#f8c8dc',blue:'#cfe8ff',green:'#d8f5d0'};
+    input.style.backgroundColor=colorMap[color]||'#fff59d';
+  }
+}
+
+function renderNotes(){
+  const list=document.getElementById("stickyList");
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  list.innerHTML=notes.length?notes.map((note)=>`
+  <div class="sticky-item" data-color="${note.color||'yellow'}">
+    <button class="sticky-menu-button" type="button" onclick="event.stopPropagation(); toggleNoteMenu(${note.id});">⋯</button>
+    <div class="sticky-note-menu" id="noteMenu-${note.id}">
+      <button type="button" onclick="event.stopPropagation(); downloadNote(${note.id});">Download</button>
+      <button type="button" onclick="event.stopPropagation(); removeNote(${note.id});">Remove</button>
+    </div>
+    <div class="sticky-note-text" contenteditable="true" onblur="updateNote(${note.id}, this.innerText)">${escapeHtml(note.text)}</div>
+  </div>`).join("") : '';
+}
+
+function updateNote(id, text){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  const updated=notes.map(note=>note.id===id?{...note,text:text.trim()||note.text,createdAt:note.createdAt}:note);
+  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+  renderNotes();
+}
+
+function toggleNoteMenu(id){
+  const menu=document.getElementById(`noteMenu-${id}`);
+  if(!menu) return;
+  document.querySelectorAll('.sticky-note-menu').forEach(item=>{
+    if(item!==menu) item.classList.remove('show');
+  });
+  menu.classList.toggle('show');
+}
+
+function downloadNote(id){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  const note=notes.find(item=>item.id===id);
+  if(!note) return;
+  const content=note.text || 'Empty note';
+  const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=`sticky-note-${id}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function addNote(text="New note", color=selectedNoteColor){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  notes.unshift({id:Date.now(),text:(text||"").trim()||"New note",color,createdAt:new Date().toLocaleString()});
+  localStorage.setItem("weatherStickyNotes", JSON.stringify(notes.slice(0,20))); // increased limit for standalone use
+  renderNotes();
+}
+
+function saveNoteFromInput(){
+  const input=document.getElementById("noteInput");
+  if(!input||!input.value.trim()) return;
+  addNote(input.value, selectedNoteColor);
+  input.value="";
+}
+
+function saveNotesToPdf(){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  if(!window.jspdf){
+    alert("PDF library could not be loaded. Please try again.");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 36;
+  const contentWidth = pageWidth - margin * 2;
+  const boxWidth = Math.min(contentWidth * 0.82, 320);
+  const boxX = margin + (contentWidth - boxWidth) / 2;
+  const colorMap = {
+    yellow: [255, 245, 157],
+    pink: [248, 200, 220],
+    blue: [207, 232, 255],
+    green: [216, 245, 208]
+  };
+
+  let y = 50;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text("Sticky Notes", margin, y);
+  y += 24;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(90, 90, 90);
+  doc.text(`Generated on ${new Date().toLocaleString()}`, margin, y);
+  y += 24;
+  doc.setTextColor(0, 0, 0);
+
+  if(!notes.length){
+    doc.setFontSize(12);
+    doc.text("No notes yet.", margin, y);
+    doc.save("sticky-notes.pdf");
+    return;
+  }
+
+  notes.forEach((note) => {
+    const text = note.text || "Empty note";
+    const [r, g, b] = colorMap[note.color] || colorMap.yellow;
+    const lines = doc.splitTextToSize(text, boxWidth - 28);
+    const boxHeight = Math.max(92, 28 + lines.length * 13 + 24);
+
+    if(y + boxHeight > pageHeight - margin){
+      doc.addPage();
+      y = 50;
+    }
+
+    doc.setFillColor(r, g, b);
+    doc.setDrawColor(120, 120, 120);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(boxX, y, boxWidth, boxHeight, 8, 8, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(lines, boxX + 14, y + 22);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Created: ${note.createdAt || "Unknown"}`, boxX + 14, y + boxHeight - 12);
+    doc.setTextColor(0, 0, 0);
+    y += boxHeight + 16;
+  });
+
+  doc.save("sticky-notes.pdf");
+}
+
+function removeNote(id){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  const updated=notes.filter(note=>note.id!==id);
+  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+  renderNotes();
+}
+
+document.addEventListener('click',()=>{
+  document.querySelectorAll('.sticky-note-menu').forEach(menu=>menu.classList.remove('show'));
+});
+
+// Initialize
+setNoteColor('yellow');
+renderNotes();
+</script>
+</body>
+</html>
