@@ -197,10 +197,10 @@ body{
     <p>Notes</p>
     <textarea id="noteInput" rows="3" placeholder="Write a note..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); saveNoteFromInput();}"></textarea>
     <div class="color-picker-row">
-      <button class="color-pill yellow active" onclick="setNoteColor('yellow')" type="button"></button>
-      <button class="color-pill pink" onclick="setNoteColor('pink')" type="button"></button>
-      <button class="color-pill blue" onclick="setNoteColor('blue')" type="button"></button>
-      <button class="color-pill green" onclick="setNoteColor('green')" type="button"></button>
+      <button class="color-pill yellow active" onclick="setNoteColor('yellow')" type="button" aria-label="Select Yellow Color"></button>
+      <button class="color-pill pink" onclick="setNoteColor('pink')" type="button" aria-label="Select Pink Color"></button>
+      <button class="color-pill blue" onclick="setNoteColor('blue')" type="button" aria-label="Select Blue Color"></button>
+      <button class="color-pill green" onclick="setNoteColor('green')" type="button" aria-label="Select Green Color"></button>
     </div>
     <button class="add-note-btn" onclick="saveNoteFromInput()">Add Note</button>
     <button class="add-note-btn secondary" onclick="saveNotesToPdf()">Download PDF</button>
@@ -211,10 +211,11 @@ body{
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 function escapeHtml(text){
-  return text.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  return text.replace(/[&< me>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 
 let selectedNoteColor='yellow';
+const availableColors=['yellow','pink','blue','green'];
 
 function setNoteColor(color){
   selectedNoteColor=color;
@@ -231,9 +232,10 @@ function renderNotes(){
   const list=document.getElementById("stickyList");
   const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
   list.innerHTML=notes.length?notes.map((note)=>`
-  <div class="sticky-item" data-color="${note.color||'yellow'}">
-    <button class="sticky-menu-button" type="button" onclick="event.stopPropagation(); toggleNoteMenu(${note.id});">⋯</button>
+  <div class="sticky-item" data-id="${note.id}" data-color="${note.color||'yellow'}">
+    <button class="sticky-menu-button" type="button" onclick="event.stopPropagation(); toggleNoteMenu(${note.id});" aria-label="Note options">⋯</button>
     <div class="sticky-note-menu" id="noteMenu-${note.id}">
+      <button type="button" onclick="event.stopPropagation(); changeNoteColor(${note.id});">Change Color</button>
       <button type="button" onclick="event.stopPropagation(); downloadNote(${note.id});">Download</button>
       <button type="button" onclick="event.stopPropagation(); removeNote(${note.id});">Remove</button>
     </div>
@@ -241,9 +243,23 @@ function renderNotes(){
   </div>`).join("") : '';
 }
 
+function changeNoteColor(id){
+  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  const updated=notes.map(note=>{
+    if(note.id===id){
+      const currentIndex=availableColors.indexOf(note.color||'yellow');
+      const nextColor=availableColors[(currentIndex+1)%availableColors.length];
+      return {...note, color: nextColor};
+    }
+    return note;
+  });
+  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+  renderNotes();
+}
+
 function updateNote(id, text){
   const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  const updated=notes.map(note=>note.id===id?{...note,text:text.trim()||note.text,createdAt:note.createdAt}:note);
+  const updated=notes.map(note=>note.id===id?{...note,text:text.trim()||"Empty note",createdAt:note.createdAt}:note);
   localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
   renderNotes();
 }
@@ -276,7 +292,7 @@ function downloadNote(id){
 function addNote(text="New note", color=selectedNoteColor){
   const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
   notes.unshift({id:Date.now(),text:(text||"").trim()||"New note",color,createdAt:new Date().toLocaleString()});
-  localStorage.setItem("weatherStickyNotes", JSON.stringify(notes.slice(0,20))); // increased limit for standalone use
+  localStorage.setItem("weatherStickyNotes", JSON.stringify(notes.slice(0,20)));
   renderNotes();
 }
 
@@ -357,10 +373,21 @@ function saveNotesToPdf(){
 }
 
 function removeNote(id){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  const updated=notes.filter(note=>note.id!==id);
-  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
-  renderNotes();
+  const noteElement=document.querySelector(`.sticky-item[data-id="${id}"]`);
+  if(noteElement){
+    noteElement.classList.add('removing');
+    setTimeout(()=>{
+      const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+      const updated=notes.filter(note=>note.id!==id);
+      localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+      renderNotes();
+    }, 350);
+  } else {
+    const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+    const updated=notes.filter(note=>note.id!==id);
+    localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+    renderNotes();
+  }
 }
 
 document.addEventListener('click',()=>{
