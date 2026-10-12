@@ -12,17 +12,17 @@ body{
   background:linear-gradient(135deg,#87ceeb 0%,#dfefff 45%,#f7e6c4 100%);
   color:#2f3b4a;
   min-height:100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 40px 20px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  padding:40px 20px;
 }
 .sticky-section{
   display:flex;
   flex-direction:column;
   gap:16px;
   width:100%;
-  max-width:350px;
+  max-width:380px;
   z-index:10;
 }
 .sticky-note-box{
@@ -64,7 +64,7 @@ body{
   gap:12px;
   align-items:center;
   margin-bottom:12px;
-  justify-content: center;
+  justify-content:center;
 }
 .sticky-note-box .color-pill{
   width:32px;
@@ -81,26 +81,49 @@ body{
 .sticky-note-box .color-pill.pink{background:#f8c8dc}
 .sticky-note-box .color-pill.blue{background:#cfe8ff}
 .sticky-note-box .color-pill.green{background:#d8f5d0}
+.sticky-note-box .button-group{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
 .sticky-note-box .add-note-btn{
   width:100%;
-  padding:12px;
+  padding:11px;
   border:none;
   border-radius:999px;
   background:linear-gradient(135deg,#ffffff,#f4f6ff);
   color:#2f3b4a;
   font-weight:700;
   cursor:pointer;
-  margin-bottom:8px;
-  font-size:15px;
+  font-size:14px;
   transition:transform .2s ease, box-shadow .2s ease;
 }
-.sticky-note-box .add-note-btn:hover {
+.sticky-note-box .add-note-btn:hover{
   transform:translateY(-1px);
-  box-shadow:0 8px 18px rgba(0,0,0,.12)
+  box-shadow:0 8px 18px rgba(0,0,0,.12);
 }
 .sticky-note-box .add-note-btn.secondary{
   background:linear-gradient(135deg,#2f4f4f,#456a6a);
   color:#fff;
+}
+.sticky-note-box .add-note-btn.danger{
+  background:rgba(217,83,79,.85);
+  color:#fff;
+}
+.search-input{
+  width:100%;
+  box-sizing:border-box;
+  padding:9px 12px;
+  border:1px solid rgba(255,255,255,.5);
+  border-radius:999px;
+  background:rgba(255,255,255,.7);
+  font-family:'Times New Roman',Times,serif;
+  font-size:14px;
+  margin-bottom:10px;
+  outline:none;
+}
+.search-input:focus{
+  background:#fff;
 }
 .sticky-list{
   display:flex;
@@ -167,13 +190,13 @@ body{
   border-radius:10px;
   box-shadow:0 8px 18px rgba(0,0,0,.12);
   padding:6px;
-  min-width:110px;
+  min-width:130px;
   z-index:5;
 }
 .sticky-note-menu.show{display:flex}
 .sticky-note-menu button{
   margin:0;
-  padding:8px;
+  padding:7px 10px;
   border-radius:8px;
   border:none;
   background:#f6f6f6;
@@ -184,6 +207,12 @@ body{
 }
 .sticky-note-menu button:hover{background:#ececec}
 .sticky-item.removing{transform:translateX(-220px);opacity:0}
+.empty-state{
+  text-align:center;
+  color:rgba(47,59,74,.8);
+  font-size:15px;
+  padding:12px;
+}
 
 @media (max-width:480px){
   .sticky-section{max-width:100%}
@@ -202,140 +231,214 @@ body{
       <button class="color-pill blue" onclick="setNoteColor('blue')" type="button" aria-label="Select Blue Color"></button>
       <button class="color-pill green" onclick="setNoteColor('green')" type="button" aria-label="Select Green Color"></button>
     </div>
-    <button class="add-note-btn" onclick="saveNoteFromInput()">Add Note</button>
-    <button class="add-note-btn secondary" onclick="saveNotesToPdf()">Download PDF</button>
+    <input type="text" id="searchInput" class="search-input" placeholder="Search notes..." oninput="renderNotes()" aria-label="Search notes">
+    <div class="button-group">
+      <button class="add-note-btn" onclick="saveNoteFromInput()">Add Note</button>
+      <button class="add-note-btn secondary" onclick="saveNotesToPdf()">Download All Notes (PDF)</button>
+      <button class="add-note-btn danger" onclick="clearAllNotes()">Clear All Notes</button>
+    </div>
   </div>
   <div id="stickyList" class="sticky-list"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-function escapeHtml(text){
-  if(!text) return '';
-  return text.replace(/[&< me>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch] || ch)).replace(/[&<"']/g, ch => ({'&':'&amp;','<':'&lt;','"':'&quot;',"'":'&#39;'}[ch]));
-}
+const STORAGE_KEY = 'weatherStickyNotes';
+const availableColors = ['yellow', 'pink', 'blue', 'green'];
+const colorHexMap = { yellow: '#fff59d', pink: '#f8c8dc', blue: '#cfe8ff', green: '#d8f5d0' };
+const colorRgbMap = {
+  yellow: [255, 245, 157],
+  pink: [248, 200, 220],
+  blue: [207, 232, 255],
+  green: [216, 245, 208]
+};
+let selectedNoteColor = 'yellow';
 
 function escapeHtml(text){
   if(!text) return '';
-  return String(text).replace(/[&<"']/g, ch => ({'&':'&amp;','<':'&lt;','"':'&quot;',"'":'&#39;'}[ch]));
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-let selectedNoteColor='yellow';
-const availableColors=['yellow','pink','blue','green'];
+function getNotes(){
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch (e) {
+    console.error('Failed to parse notes from storage:', e);
+    return [];
+  }
+}
+
+function saveNotes(notes){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  } catch (e) {
+    console.error('Failed to save notes to storage:', e);
+  }
+}
 
 function setNoteColor(color){
-  selectedNoteColor=color;
-  document.querySelectorAll('.color-pill').forEach(btn=>btn.classList.toggle('active',btn.classList.contains(color)));
-  const input=document.getElementById('noteInput');
+  selectedNoteColor = color;
+  document.querySelectorAll('.color-pill').forEach(btn => btn.classList.toggle('active', btn.classList.contains(color)));
+  const input = document.getElementById('noteInput');
   if(input){
-    input.dataset.color=color;
-    const colorMap={yellow:'#fff59d',pink:'#f8c8dc',blue:'#cfe8ff',green:'#d8f5d0'};
-    input.style.backgroundColor=colorMap[color]||'#fff59d';
+    input.dataset.color = color;
+    input.style.backgroundColor = colorHexMap[color] || colorHexMap.yellow;
   }
 }
 
 function renderNotes(){
-  const list=document.getElementById("stickyList");
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  list.innerHTML=notes.length?notes.map((note)=>`
-  <div class="sticky-item" data-id="${note.id}" data-color="${note.color||'yellow'}">
+  const list = document.getElementById('stickyList');
+  const notes = getNotes();
+  const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+  const filteredNotes = searchQuery ? notes.filter(n => (n.text || '').toLowerCase().includes(searchQuery)) : notes;
+
+  if(!filteredNotes.length){
+    list.innerHTML = `<div class="empty-state">${searchQuery ? 'No notes matched your search.' : 'No notes yet. Create your first note above!'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filteredNotes.map(note => `
+  <div class="sticky-item" data-id="${note.id}" data-color="${note.color || 'yellow'}">
     <button class="sticky-menu-button" type="button" onclick="event.stopPropagation(); toggleNoteMenu(${note.id});" aria-label="Note options">⋯</button>
     <div class="sticky-note-menu" id="noteMenu-${note.id}">
       <button type="button" onclick="event.stopPropagation(); changeNoteColor(${note.id});">Change Color</button>
-      <button type="button" onclick="event.stopPropagation(); downloadNote(${note.id});">Download</button>
+      <button type="button" onclick="event.stopPropagation(); downloadNoteAsPdf(${note.id});">Download PDF</button>
+      <button type="button" onclick="event.stopPropagation(); downloadNoteAsText(${note.id});">Download TXT</button>
       <button type="button" onclick="event.stopPropagation(); removeNote(${note.id});">Remove</button>
     </div>
     <div class="sticky-note-text" contenteditable="true" onblur="updateNote(${note.id}, this.innerText)">${escapeHtml(note.text)}</div>
-  </div>`).join("") : '';
+  </div>`).join('');
 }
 
 function changeNoteColor(id){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  const updated=notes.map(note=>{
-    if(note.id===id){
-      const currentIndex=availableColors.indexOf(note.color||'yellow');
-      const nextColor=availableColors[(currentIndex+1)%availableColors.length];
-      return {...note, color: nextColor};
+  const notes = getNotes();
+  const updated = notes.map(note => {
+    if(note.id === id){
+      const currentIndex = availableColors.indexOf(note.color || 'yellow');
+      const nextColor = availableColors[(currentIndex + 1) % availableColors.length];
+      return { ...note, color: nextColor };
     }
     return note;
   });
-  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+  saveNotes(updated);
   renderNotes();
 }
 
 function updateNote(id, text){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  const updated=notes.map(note=>note.id===id?{...note,text:text.trim()||"Empty note",createdAt:note.createdAt}:note);
-  localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
-  renderNotes();
+  const trimmedText = (text || '').trim();
+  const notes = getNotes();
+  const updated = notes.map(note => note.id === id ? { ...note, text: trimmedText || 'Empty note' } : note);
+  saveNotes(updated);
 }
 
 function toggleNoteMenu(id){
-  const menu=document.getElementById(`noteMenu-${id}`);
+  const menu = document.getElementById(`noteMenu-${id}`);
   if(!menu) return;
-  document.querySelectorAll('.sticky-note-menu').forEach(item=>{
-    if(item!==menu) item.classList.remove('show');
+  document.querySelectorAll('.sticky-note-menu').forEach(item => {
+    if(item !== menu) item.classList.remove('show');
   });
   menu.classList.toggle('show');
 }
 
-function downloadNote(id){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  const note=notes.find(item=>item.id===id);
+function downloadNoteAsText(id){
+  const notes = getNotes();
+  const note = notes.find(item => item.id === id);
   if(!note) return;
-  const content=note.text || 'Empty note';
-  const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const link=document.createElement('a');
-  link.href=url;
-  link.download=`sticky-note-${id}.txt`;
+  const content = note.text || 'Empty note';
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `sticky-note-${id}.txt`;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
 }
 
-function addNote(text="New note", color=selectedNoteColor){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-  notes.unshift({id:Date.now(),text:(text||"").trim()||"New note",color,createdAt:new Date().toLocaleString()});
-  localStorage.setItem("weatherStickyNotes", JSON.stringify(notes.slice(0,20)));
+function downloadNoteAsPdf(id){
+  const notes = getNotes();
+  const note = notes.find(item => item.id === id);
+  if(!note) return;
+  if(!window.jspdf){
+    alert('PDF library could not be loaded. Please try again.');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a5' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 28;
+  const boxWidth = pageWidth - margin * 2;
+  const [r, g, b] = colorRgbMap[note.color] || colorRgbMap.yellow;
+  const text = note.text || 'Empty note';
+  const lines = doc.splitTextToSize(text, boxWidth - 30);
+  const boxHeight = Math.max(90, 36 + lines.length * 15 + 24);
+
+  doc.setFillColor(r, g, b);
+  doc.setDrawColor(120, 120, 120);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(margin, margin + 20, boxWidth, boxHeight, 8, 8, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.text(lines, margin + 15, margin + 44);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Created: ${note.createdAt || 'Unknown'}`, margin + 15, margin + 20 + boxHeight - 12);
+
+  doc.save(`sticky-note-${id}.pdf`);
+}
+
+function addNote(text = 'New note', color = selectedNoteColor){
+  const notes = getNotes();
+  notes.unshift({
+    id: Date.now(),
+    text: (text || '').trim() || 'New note',
+    color,
+    createdAt: new Date().toLocaleString()
+  });
+  saveNotes(notes.slice(0, 50));
   renderNotes();
 }
 
 function saveNoteFromInput(){
-  const input=document.getElementById("noteInput");
-  if(!input||!input.value.trim()) return;
+  const input = document.getElementById('noteInput');
+  if(!input || !input.value.trim()) return;
   addNote(input.value, selectedNoteColor);
-  input.value="";
+  input.value = '';
 }
 
 function saveNotesToPdf(){
-  const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
+  const notes = getNotes();
   if(!window.jspdf){
-    alert("PDF library could not be loaded. Please try again.");
+    alert('PDF library could not be loaded. Please try again.');
     return;
   }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 36;
   const contentWidth = pageWidth - margin * 2;
-  const boxWidth = Math.min(contentWidth * 0.82, 320);
+  const boxWidth = Math.min(contentWidth * 0.85, 360);
   const boxX = margin + (contentWidth - boxWidth) / 2;
-  const colorMap = {
-    yellow: [255, 245, 157],
-    pink: [248, 200, 220],
-    blue: [207, 232, 255],
-    green: [216, 245, 208]
-  };
 
   let y = 50;
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text("Sticky Notes", margin, y);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Sticky Notes', margin, y);
   y += 24;
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(90, 90, 90);
   doc.text(`Generated on ${new Date().toLocaleString()}`, margin, y);
@@ -344,16 +447,16 @@ function saveNotesToPdf(){
 
   if(!notes.length){
     doc.setFontSize(12);
-    doc.text("No notes yet.", margin, y);
-    doc.save("sticky-notes.pdf");
+    doc.text('No notes yet.', margin, y);
+    doc.save('sticky-notes.pdf');
     return;
   }
 
   notes.forEach((note) => {
-    const text = note.text || "Empty note";
-    const [r, g, b] = colorMap[note.color] || colorMap.yellow;
+    const text = note.text || 'Empty note';
+    const [r, g, b] = colorRgbMap[note.color] || colorRgbMap.yellow;
     const lines = doc.splitTextToSize(text, boxWidth - 28);
-    const boxHeight = Math.max(92, 28 + lines.length * 13 + 24);
+    const boxHeight = Math.max(80, 26 + lines.length * 14 + 20);
 
     if(y + boxHeight > pageHeight - margin){
       doc.addPage();
@@ -363,44 +466,54 @@ function saveNotesToPdf(){
     doc.setFillColor(r, g, b);
     doc.setDrawColor(120, 120, 120);
     doc.setLineWidth(0.5);
-    doc.roundedRect(boxX, y, boxWidth, boxHeight, 8, 8, "FD");
-    doc.setFont("helvetica", "bold");
+    doc.roundedRect(boxX, y, boxWidth, boxHeight, 8, 8, 'FD');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
     doc.text(lines, boxX + 14, y + 22);
-    doc.setFont("helvetica", "normal");
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
-    doc.text(`Created: ${note.createdAt || "Unknown"}`, boxX + 14, y + boxHeight - 12);
+    doc.text(`Created: ${note.createdAt || 'Unknown'}`, boxX + 14, y + boxHeight - 10);
     doc.setTextColor(0, 0, 0);
-    y += boxHeight + 16;
+    y += boxHeight + 14;
   });
 
-  doc.save("sticky-notes.pdf");
+  doc.save('sticky-notes.pdf');
 }
 
 function removeNote(id){
-  const noteElement=document.querySelector(`.sticky-item[data-id="${id}"]`);
+  const noteElement = document.querySelector(`.sticky-item[data-id="${id}"]`);
+  const executeRemoval = () => {
+    const notes = getNotes();
+    const updated = notes.filter(note => note.id !== id);
+    saveNotes(updated);
+    renderNotes();
+  };
+
   if(noteElement){
     noteElement.classList.add('removing');
-    setTimeout(()=>{
-      const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-      const updated=notes.filter(note=>note.id!==id);
-      localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
-      renderNotes();
-    }, 350);
+    setTimeout(executeRemoval, 350);
   } else {
-    const notes=JSON.parse(localStorage.getItem("weatherStickyNotes")||"[]");
-    const updated=notes.filter(note=>note.id!==id);
-    localStorage.setItem("weatherStickyNotes", JSON.stringify(updated));
+    executeRemoval();
+  }
+}
+
+function clearAllNotes(){
+  const notes = getNotes();
+  if(!notes.length) return;
+  if(confirm('Are you sure you want to delete all sticky notes?')){
+    saveNotes([]);
     renderNotes();
   }
 }
 
-document.addEventListener('click',()=>{
-  document.querySelectorAll('.sticky-note-menu').forEach(menu=>menu.classList.remove('show'));
+// Close menu when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.sticky-note-menu').forEach(menu => menu.classList.remove('show'));
 });
 
-// Initialize
+// Initialize default state
 setNoteColor('yellow');
 renderNotes();
 </script>
